@@ -10,6 +10,9 @@ flask-migrate = "*"
 flask-admin = "*"
 sqlalchemy = "*"
 flask-login = "*"
+flask-wtf = "*"
+email-validator = "*"
+bcrypt = "*"
 
 [dev-packages]
 

@@ -1,147 +1,170 @@
-import json
+# from crypt import methods
+import bcrypt as bcrypt
+from flask import Flask, render_template, url_for, flash, redirect, request
+from sqlalchemy import func
 
-from flask import Flask, render_template, request, jsonify
-from flask_login import LoginManager, login_user, logout_user, current_user, login_required
-from flask_admin import Admin
-from flask_admin.contrib.sqla import ModelView
+from forms import RegistrationForm, LoginForm, PostForm
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import relationship
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
 
 app = Flask(__name__)
-app.secret_key = 'some key'
 
-# Config for Flask-Admin
-app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
-admin = Admin(app, template_mode='bootstrap3')
-
-# Config for Flask-Login
-login_manager = LoginManager()
-# This line is required for Flask-Login when you're using using current_user in a template
-login_manager.init_app(app)
-
-# Config for Flask-SQLAlchemy
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+app.config["SECRET_KEY"] = "29b88f280b5ab6fbc8996226930c6e0b"  # secrets.token_hex(16)
+##CONNECT TO DB
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///blog.db"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
 migrate = Migrate(app, db)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-# Models
-class User(db.Model):
+
+# posts = [
+#     {
+#         "author": "Guillermo N",
+#         "title": "Blog Post 1",
+#         "content": "First post content",
+#         "date_posted": "May 29, 2022",
+#     },
+#     {
+#         "author": "Tulio Fra",
+#         "title": "Blog Post 2",
+#         "content": "Second post content",
+#         "date_posted": "May 30, 2022",
+#     }
+# ]
+
+class User(UserMixin, db.Model):
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(100))
+    email = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    # connection to Posts table
+    posts = relationship("Post", back_populates="author")
+    # connection to the comment table
+    comments = relationship("Comments", back_populates="commenter")
+
+    def __init__(self, name, email, password):
+        self.name = name
+        self.email = email
+        self.password = password
 
     def __repr__(self):
-        return '<User %r>' % self.name
-
-    def to_json(self):
-        return {"name": self.name,
-                "email": self.email}
-
-    def is_authenticated(self):
-        return True
-
-    def is_active(self):
-        return True
-
-    def is_anonymous(self):
-        return False
-
-    def get_id(self):
-        return str(self.id)
+        return f"User('{self.name}', '{self.email}')"
 
 
-categories = db.Table('categories',
-                      db.Column('category_id', db.Integer, db.ForeignKey('category.id', ondelete='CASCADE'), primary_key=True),
-                      db.Column('shop_id', db.Integer, db.ForeignKey('shop.id', ondelete='CASCADE'), primary_key=True)
-                      )
-
-
-class Shop(db.Model):
+class Post(db.Model):
+    __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    description = db.Column(db.String(120), nullable=False)
-    url = db.Column(db.String(120), nullable=False)
-    price = db.Column(db.String(120), nullable=False)
-    icon = db.Column(db.String(120), nullable=False)
-    categories = db.relationship('Category', secondary="categories",
-                            backref=db.backref('shops', lazy='dynamic'))
+    title = db.Column(db.String(250), unique=True, nullable=False)
+    subtitle = db.Column(db.String(250), nullable=False)
+    date = db.Column(db.DateTime(), nullable=False, default=db.func.current_timestamp())
+    description = db.Column(db.Text, nullable=False)
+    price = db.Column(db.Integer)
+    img_url = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # connection to the Users table
+    author = relationship("User", back_populates="posts")
+    # connection to the comments table
+    comments = relationship("Comments", back_populates="post", cascade="delete")
 
 
-class Category(db.Model):
+class Comments(db.Model):
+    __tablename = "comments"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    icon = db.Column(db.String(120), nullable=False)
-
-    def __repr__(self):
-        return self.name
-
-
-admin.add_view(ModelView(User, db.session))
-admin.add_view(ModelView(Shop, db.session))
-admin.add_view(ModelView(Category, db.session))
-
-
-# admin.add_view(ModelView(Post, db.session))
+    text = db.Column(db.Text, nullable=False)
+    # foreign key for Posts
+    post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"), nullable=False)
+    # foreign key for Users
+    commenter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # connection to the user Table
+    commenter = relationship("User", back_populates="comments")
+    # connection to the Post table
+    post = relationship("Post", back_populates="comments")
 
 
 @login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(user_id)
+def user_loader(user_id):
+    return User.query.get(int(user_id))
 
 
-@app.route('/')
-def index():  # put application's code here
-    return render_template('index.html')
+@app.route("/")
+def index():
+    posts = Post.query.all()
+    return render_template("index.html", posts=posts)
 
 
-@app.route('/product')
-def product():
-    return render_template('product-details.html')
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 
-@app.route('/shop')
+@app.route("/home")
+def home():
+    posts = Post.query.all()
+    return render_template("index.html", posts=posts)
+
+
+@app.route("/about")
 def shop():
-    return render_template('shop.html')
+    return render_template("shop.html", title="About")
 
 
-@app.route('/login')
-def login_get():
-    return render_template('login.html')
+@app.route("/product")
+def product():
+    # Get random post from posts
+    post = Post.query.order_by(func.random()).first()
+    return render_template("product-details.html", title="Product", post=post)
 
 
-@app.route('/login', methods=['POST'])
-def login_post():
-    email = request.form['email']
-    password = request.form['password']
-    user = User.query.filter_by(email=email).first()
-    if user is None:
-        return render_template('login.html', error='Invalid username or password')
-    login_user(user)
-    return render_template('index.html')
-
-
-@app.route('/logout')
-def logout():
-    logout_user()
-    return render_template('index.html')
-
-
-@app.route('/register', methods=['POST'])
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    name = request.form['name']
-    email = request.form['email']
-    password = request.form['password']
-    user = User.query.filter_by(email=email).first()
-    if user is not None:
-        return render_template('login.html', error='Email already exists')
-    user = User(name=name, email=email, password=password)
-    db.session.add(user)
-    db.session.commit()
-    return render_template('login.html')
+    form = RegistrationForm()
+
+    if form.validate_on_submit():
+        user = User(name=form.username.data, email=form.email.data, password=bcrypt.hashpw(form.password.data.encode("utf-8"),
+                                                                                           bcrypt.gensalt()))
+        db.session.add(user)
+        db.session.commit()
+        flash(f"Account created for {form.username.data}!", "success")
+        login_user(user)
+        return redirect(url_for("index"))
+
+    return render_template("register.html", title="Register", form=form)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user and bcrypt.checkpw(form.password.data, user.password):
+            login_user(user, remember=form.remember.data)
+            next_page = request.args.get("next")
+            return redirect(next_page) if next_page else redirect(url_for("index"))
+        else:
+            flash("Login Unsuccessful. Please check username and password", "danger")
+
+    return render_template("login.html", title="LogIn", form=form)
+
+
+@app.route("/create_post", methods=["GET", "POST"])
+@login_required
+def create_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        post = Post(title=form.title.data, subtitle=form.subtitle.data,
+                    description=form.description.data, img_url=form.img_url.data, price=form.price.data, author_id=current_user.id)
+        db.session.add(post)
+        db.session.commit()
+        flash("Post created!", "success")
+        return redirect(url_for("index"))
+    return render_template("create_post.html", title="Create Post", form=form)
 
 
 if __name__ == '__main__':
-    db.create_all()
     app.run(debug=True)
