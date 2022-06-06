@@ -76,6 +76,7 @@
                     {% else %}
                         <li>Hi {{ current_user.name }}</li>
                         <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                        <li><a href="{{ url_for('create_post') }}">Create post</a></li>
                     {% endif %} 
 
                 </ul>
