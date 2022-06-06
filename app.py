@@ -19,6 +19,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.init_app(app)
 
 
 # posts = [
@@ -114,7 +115,8 @@ def product(id):
 @app.route("/register", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
-
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
     if form.validate_on_submit():
         user = User(name=form.username.data, email=form.email.data,
                     password=bcrypt.hashpw(form.password.data.encode("utf-8"),
@@ -131,7 +133,8 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
         if user and bcrypt.checkpw(form.password.data.encode("utf-8"), user.password):
@@ -155,7 +158,7 @@ def create_post():
         db.session.add(post)
         db.session.commit()
         flash("Post created!", "success")
-        return redirect(url_for("index"))
+        return redirect(url_for("create_post"))
     return render_template("create_post.html", title="Create Post", form=form)
 
 
