@@ -44,7 +44,6 @@ class User(UserMixin, db.Model):
     # connection to Posts table
     posts = relationship("Post", back_populates="author")
 
-
     def __init__(self, name, email, password):
         self.name = name
         self.email = email
@@ -83,11 +82,15 @@ def user_loader(user_id):
     return User.query.get(int(user_id))
 
 
+@app.before_first_request
+def before_first_request():
+    db.create_all()
+
+
 @app.route("/")
 def index():
     posts = Post.query.all()
     return render_template("index.html", posts=posts)
-
 
 
 @app.route("/home")
@@ -113,8 +116,9 @@ def register():
     form = RegistrationForm()
 
     if form.validate_on_submit():
-        user = User(name=form.username.data, email=form.email.data, password=bcrypt.hashpw(form.password.data.encode("utf-8"),
-                                                                                           bcrypt.gensalt()))
+        user = User(name=form.username.data, email=form.email.data,
+                    password=bcrypt.hashpw(form.password.data.encode("utf-8"),
+                                           bcrypt.gensalt()))
         db.session.add(user)
         db.session.commit()
         flash(f"Account created for {form.username.data}!", "success")
@@ -146,7 +150,8 @@ def create_post():
     form = PostForm()
     if form.validate_on_submit():
         post = Post(title=form.title.data, subtitle=form.subtitle.data,
-                    description=form.description.data, img_url=form.img_url.data, price=form.price.data, author_id=current_user.id)
+                    description=form.description.data, img_url=form.img_url.data, price=form.price.data,
+                    author_id=current_user.id)
         db.session.add(post)
         db.session.commit()
         flash("Post created!", "success")
