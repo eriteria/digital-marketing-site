@@ -134,7 +134,7 @@ def login():
 
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.checkpw(form.password.data, user.password):
+        if user and bcrypt.checkpw(form.password.data.encode("utf-8"), user.password):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get("next")
             return redirect(next_page) if next_page else redirect(url_for("index"))
