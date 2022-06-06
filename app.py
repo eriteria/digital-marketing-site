@@ -37,15 +37,13 @@ login_manager.login_view = 'login'
 # ]
 
 class User(UserMixin, db.Model):
-    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     # connection to Posts table
     posts = relationship("Post", back_populates="author")
-    # connection to the comment table
-    comments = relationship("Comments", back_populates="commenter")
+
 
     def __init__(self, name, email, password):
         self.name = name
@@ -57,7 +55,6 @@ class User(UserMixin, db.Model):
 
 
 class Post(db.Model):
-    __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(250), unique=True, nullable=False)
     subtitle = db.Column(db.String(250), nullable=False)
@@ -65,25 +62,20 @@ class Post(db.Model):
     description = db.Column(db.Text, nullable=False)
     price = db.Column(db.Integer)
     img_url = db.Column(db.String(250), nullable=False)
-    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     # connection to the Users table
     author = relationship("User", back_populates="posts")
     # connection to the comments table
-    comments = relationship("Comments", back_populates="post", cascade="delete")
+    category = relationship("Categories", back_populates="post", cascade="delete")
 
 
-class Comments(db.Model):
-    __tablename = "comments"
+class Categories(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
+    category = db.Column(db.Text, nullable=False)
     # foreign key for Posts
-    post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"), nullable=False)
-    # foreign key for Users
-    commenter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    # connection to the user Table
-    commenter = relationship("User", back_populates="comments")
-    # connection to the Post table
-    post = relationship("Post", back_populates="comments")
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
+    # connection to the Posts table
+    post = relationship("Post", back_populates="category")
 
 
 @login_manager.user_loader
@@ -97,10 +89,6 @@ def index():
     return render_template("index.html", posts=posts)
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
 
 @app.route("/home")
 def home():
@@ -108,15 +96,15 @@ def home():
     return render_template("index.html", posts=posts)
 
 
-@app.route("/about")
+@app.route("/categories")
 def shop():
     return render_template("shop.html", title="About")
 
 
-@app.route("/product")
-def product():
+@app.route("/product/<int:id>")
+def product(id):
     # Get random post from posts
-    post = Post.query.order_by(func.random()).first()
+    post = Post.query.get_or_404(id)
     return render_template("product-details.html", title="Product", post=post)
 
 

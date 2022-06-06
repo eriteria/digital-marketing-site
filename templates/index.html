@@ -70,15 +70,13 @@
             <nav class="amado-nav">
                 <ul>
                     <li class="active"><a href="{{ url_for('index') }}">Home</a></li>
-                    <li><a href="{{ url_for('shop') }}">Shop</a></li>
-                    <li><a href="{{ url_for('product') }}">Product</a></li>
-                    <li><a href="cart.html">Cart</a></li>
-                    <li><a href="checkout.html">Checkout</a></li>
+                    <li><a href="{{ url_for('about') }}">Product</a></li>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
                 </ul>
             </nav>
             <!-- Button Group -->
             <div class="amado-btn-group mt-30 mb-100">
-                <a href="#" class="btn amado-btn mb-15">%Discount%</a>
                 <a href="#" class="btn amado-btn active">New this week</a>
             </div>
             <!-- Cart Menu -->
@@ -103,7 +101,7 @@
             {% for post in posts %}
                 <!-- Single Catagory -->
                 <div class="single-products-catagory clearfix">
-                    <a href="{{ url_for('shop') }}">
+                    <a href="{{ url_for('product', id=post.id) }}">
                         <img src="{{ post.img_url }}" alt="">
                         <!-- Hover Content -->
                         <div class="hover-content">
@@ -175,11 +173,9 @@ Copyright &copy;<script>document.write(new Date().getFullYear());</script> All r
                                         <li class="nav-item active">
                                             <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                                         </li>
+
                                         <li class="nav-item">
-                                            <a class="nav-link" href="{{ url_for('shop') }}">Shop</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link" href="{{ url_for('product') }}">Product</a>
+                                            <a class="nav-link" href="{{ url_for('about') }}">Product</a>
                                         </li>
                                         <li class="nav-item">
                                             <a class="nav-link" href="cart.html">Cart</a>
